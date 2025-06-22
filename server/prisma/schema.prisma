@@ -14,4 +14,20 @@ model User {
     password String
 }
 
+model Game {
+    id Int @id @default(autoincrement())
+    ownerId Int
+    active Boolean
+    players Player[]
+}
+
+model Player {
+    id Int @id @default(autoincrement())
+    playerId Int
+    gameId Int
+    owner Boolean
+    game Game @relation(fields: [gameId], references: [id])
+}
+
 //yarn prisma migrate dev add-model-user
+//yarn prisma migrate dev --name init

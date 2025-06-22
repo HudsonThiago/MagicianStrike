@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import UserProfile from "../../../../public/userProfile.png"
-import Div from "../../../../public/div.svg"
+import UserProfile from "../../imgs/userProfile.png"
+import Div from "../../imgs/div.svg"
 import type { ReactNode } from 'react';
 import { Button } from '../button';
 import { useUser } from '../../context/UserContext';
@@ -24,13 +24,10 @@ export default function Nav({children}:NavProps){
                 <div className="absolute z-30 h-full w-46 bg-radial-[at_50%_-10%] from-white/10 to-black/40 from-10% to-100% ">
 
                 </div>
-                <div className="absolute z-30 h-3/4 w-20 bg-linear-to-b from-black/40 from-50% to-black/0">
-
-                </div>
                 <div className="relative z-30 w-full h-[100vh] flex items-center flex-col ">
                     <div className=" mt-8 w-30 h-30 bg-white rounded-[50%] flex justify-center items-center border-stone-400 border-6">
                         <img
-                            className="w-3/4 h-3/4 contrast-20 select-none"
+                            className="w-3/4 h-3/4 select-none"
                             src={UserProfile}
                             alt="fotoPerfil"
                         />
@@ -44,10 +41,10 @@ export default function Nav({children}:NavProps){
                         alt="divisor"
                     />
                     <div className="mt-16 w-full flex flex-col items-center">
-                        <Button variant="dashboard">
+                        <Button variant="dashboard" onClick={()=> navigate("/dashboard/lobby")}>
                             JOGAR
                         </Button>
-                        <Button variant="dashboard">
+                        <Button variant="dashboard" onClick={()=> navigate("/dashboard")}>
                             DASHBOARD
                         </Button>
                         <Button

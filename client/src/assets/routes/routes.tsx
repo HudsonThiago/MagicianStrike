@@ -3,7 +3,8 @@ import Login from "../pages/login";
 import Register from "../pages/register";
 import Dashboard from "../pages/dashboard";
 import PrivateRoute from "./privateRoute";
-
+import Main from "../pages/dashboard/main";
+import Lobby from "../pages/dashboard/lobby";
 
 export const routes = createBrowserRouter([
   { path: "/", element: <Login /> },
@@ -12,7 +13,19 @@ export const routes = createBrowserRouter([
     path: "/dashboard",
     element: (
       <PrivateRoute>
-        <Dashboard />
+        <Dashboard>
+          <Main/>
+        </Dashboard>
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/dashboard/lobby",
+    element: (
+      <PrivateRoute>
+        <Dashboard>
+          <Lobby/>
+        </Dashboard>
       </PrivateRoute>
     ),
   },

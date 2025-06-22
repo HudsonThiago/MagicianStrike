@@ -6,11 +6,9 @@ import "./assets/styles/global.css"
 import { Context } from './assets/context/Context.tsx'
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
     <div className='w-full h-[100vh] bg-background'>
       <Context>
         <RouterProvider router={routes}/>
       </Context>
     </div>
-  </StrictMode>
 )

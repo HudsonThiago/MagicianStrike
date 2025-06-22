@@ -1,6 +1,6 @@
 # Batalha Naval
 
-Jogo da batalha naval utilizando express e socket.io
+Magician strike é um jogo no estilo "bomber man" feito em express e socket.io
 
 ## Requisitos
 

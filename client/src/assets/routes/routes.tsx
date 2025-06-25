@@ -20,7 +20,7 @@ export const routes = createBrowserRouter([
     ),
   },
   {
-    path: "/dashboard/lobby",
+    path: "/dashboard/lobby/:id",
     element: (
       <PrivateRoute>
         <Dashboard>

@@ -6,6 +6,12 @@ import { useSocket } from '../../context/socketContext';
 import { useEffect, useState } from 'react';
 import { socketService } from '../../services/socket/socketService';
 import { useUser } from '../../context/UserContext';
+import { gameService } from '../../services/GameService/GameService';
+import type { AxiosResponse } from 'axios';
+import type { Game } from '../../models/Game';
+import type { Player } from '../../models/Player';
+import { useAlert } from '../../context/AlertContext';
+import Alert from '../../components/alert/alert';
 
 export interface chat {
     username:string
@@ -13,24 +19,45 @@ export interface chat {
 }
 
 export default function Main(){
+    const {visible, setVisible, message, setMessage, type, setType} = useAlert()
     const user = useUser()
     const { socket, isConnected } = useSocket();
     const navigate = useNavigate();
     const [chatMessage, setChatMessage] = useState<string>('')
     const [messageList, setMessageList] = useState<Array<chat>>(new Array())
+    const [gameList, setGameList] = useState<Array<Game>>(new Array())
+    const [selectedGame, setSelectedGame] = useState<Game>()
 
     useEffect(() => {
         if (!socket) return;
 
         socketService.emit(socket,"joinMainLobby",{join:"geral"})
-
         socketService.getChat(socket, setMessageList)
 
+        gameService.find().then((data:AxiosResponse<Game[]>)=>{
+            setGameList(data.data)
+        })
+        
         // return () => {
         //     socket.off('message');
         // };
         
     }, [socket]);
+
+    useEffect(()=>{
+        const fetchData = async () => {
+            try {
+                await gameService.getGameByPlayerId(user.user?.id)
+                .then((data)=>{
+                    setSelectedGame(data.data)
+                })
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+            }
+        };
+
+        fetchData();
+    }, [])
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
@@ -47,45 +74,60 @@ export default function Main(){
         }
     };
 
+    const lobbyConnect= async (gameId:number)=>{
+        
+        await gameService.getGameByPlayerId(user.user?.id)
+        .then(async (data)=>{
+            if(data.data !== null){
+                navigate(`/dashboard/lobby/${data.data.id}`)
+            } else {
+                await gameService.connectPlayer({gameId: gameId, playerId: user.user?.id} as Player)
+                .then((d)=>{
+                    navigate(`/dashboard/lobby/${gameId}`)
+                })
+                .catch((error)=>{
+                    setVisible(true)
+                    setMessage(error.response.data.message)
+                    setType(error.response.data.status)
+                })
+            }
+        })
+    }
+
     return (
         <>
             <div className=" w-[60%] ml-20 mr-20 flex flex-col">
                 <h1 className="font-bold text-white text-[1.6rem]">DashBoard</h1>
                 <div className="my-8 pr-4 h-[80%] flex flex-col gap-4 overflow-auto max-h-full overflow-y-auto [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar]:w-2.5 dark:[&::-webkit-scrollbar-track]:bg-white/5 dark:[&::-webkit-scrollbar-thumb]:bg-white">
 
-                    <div className="w-full border-l-orange-300 border-l-8 bg-white/10 h-26 rounded-[100px] flex ">
-                        <div className=" h-26 ml-8 pb-4 w-full flex flex-col justify-center">
-                            <h3 className="text-[1.4rem] font-bold text-orange-200">Username</h3>
-                            <div className="mt-2 flex gap-1">
-                                <FaUser className="text-white" />
-                                <FaUser className="text-white" />
-                                <FaUser className="text-white" />
-                                <FaRegUser className="text-white" />
+                    {gameList.map((g:Game, i:number)=>{
+                        return (
+                            <div key={`game-${i}`} className="w-full border-l-orange-300 border-l-8 bg-white/10 h-26 rounded-[100px] flex ">
+                                <div className=" h-26 ml-8 pb-4 w-full flex flex-col justify-center">
+                                    <h3 className="text-[1.4rem] font-bold text-orange-200">{g.owner?.username}</h3>
+                                    <div className="mt-2 flex gap-1">
+                                        {g.players?.map((p:Player, j:number)=>{
+                                            return <FaUser key={`playerOn-${j}`} className="text-white" />
+                                        })}
+                                        {g.playerAmount && g.players && [...Array(g.playerAmount - g.players.length).keys()].map((d:number, j:number)=>{
+                                            return <FaRegUser key={`playerOff-${j}`} className="text-white" />
+                                        })}
+                                    </div>
+                                </div>
+                                {g.ownerId !== user.user?.id && selectedGame?.id===g.id && (
+                                    <div className=" h-26 w-40 mr-8 flex flex-col justify-center">
+                                        <Button
+                                            variant="dashboard"
+                                            className="mt-0 h-12 rounded-[50px]"
+                                            onClick={()=>lobbyConnect(g.id)}
+                                        >
+                                            Entrar na partida
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                        <div className=" h-26 w-40 mr-8 flex flex-col justify-center">
-                            <Button variant="dashboard" className="mt-0 h-12 rounded-[50px]">
-                                Entrar na partida
-                            </Button>
-                        </div>
-                    </div>
-                    
-                    <div className="w-full border-l-orange-300 border-l-8 bg-white/10 h-26 rounded-[100px] flex ">
-                        <div className=" h-26 ml-8 pb-4 w-full flex flex-col justify-center">
-                            <h3 className="text-[1.4rem] font-bold text-orange-200">Username</h3>
-                            <div className="mt-2 flex gap-1">
-                                <FaUser className="text-white" />
-                                <FaRegUser className="text-white" />
-                                <FaRegUser className="text-white" />
-                                <FaRegUser className="text-white" />
-                            </div>
-                        </div>
-                        <div className=" h-26 w-40 mr-8 flex flex-col justify-center">
-                            <Button variant="dashboard" className="mt-0 h-12 rounded-[50px]">
-                                Entrar na partida
-                            </Button>
-                        </div>
-                    </div>
+                        )
+                    })}
                 </div>
             </div>
             <div className=" w-[40%] mr-20 flex flex-col">

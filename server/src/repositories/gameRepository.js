@@ -8,8 +8,9 @@ export class GameRepository {
         return await prisma.game.create({
             data: {
                 ownerId: data.ownerId,
-                active: true
-            },
+                playerAmount: data.playerAmount,
+                active: true,
+            }
         });
     };
 
@@ -22,6 +23,18 @@ export class GameRepository {
                 ownerId: data.ownerId,
                 active: data.active
             },
+            include: {
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
+            }
         });
     }
 
@@ -33,13 +46,37 @@ export class GameRepository {
             data: {
                 active: false
             },
+            include: {
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
+            }
         });
     }
 
     list = async () => {
         return await prisma.game.findMany({
+            where: {
+                active: true
+            },
             include: {
-                players: true
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
             }
         });
     }
@@ -48,6 +85,18 @@ export class GameRepository {
         return await prisma.game.delete({
             where: {
                 id: id
+            },
+            include: {
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
             }
         })
     }
@@ -58,7 +107,41 @@ export class GameRepository {
                 id: id,
             },
             include: {
-                players: true
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
+            }
+        });
+    }
+
+    findByPlayerId = async (id) => {
+        return await prisma.game.findFirst({
+            where: {
+                active: true,
+                players: {
+                    some: {
+                        playerId: id
+                    }
+                }
+            },
+            include: {
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
             }
         });
     }
@@ -68,7 +151,7 @@ export class GameRepository {
             where: {
                 ownerId: ownerId,
                 active: true,
-            },
+            }
         });
     }
 }

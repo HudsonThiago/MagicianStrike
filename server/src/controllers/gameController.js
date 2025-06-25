@@ -3,13 +3,15 @@ import { GameRepository } from '../repositories/gameRepository.js';
 import { PlayerRepository } from '../repositories/playerRepository.js';
 import { checkToken } from './authController.js';
 
+export const MAX_PLAYER_IN_LOBBY = 4;
+
 export const gameController = Router();
 const gameRepository = new GameRepository()
 const playerRepository = new PlayerRepository()
-  
+
+
 gameController.get('/', async (req,res) => {
-  await gameRepository.list().then(data=>{
-    console.log(data)
+  await gameRepository.list().then(async (data)=>{
     res.status(200).json(data)
   }).catch(error=>{
     res.status(200).json([])
@@ -20,50 +22,60 @@ gameController.get('/:id', async (req,res) => {
   const gameId = Number(req.params.id);
 
   await gameRepository.findById(gameId).then(data=>{
-
     res.status(200).json(data)
   }).catch (error=>{
     res.status(400).json({message: 'Sala não foi encontrada'});
   })
 });
 
+gameController.get('/player/:id', async (req,res) => {
+  const playerId = Number(req.params.id);
+  await gameRepository.findByPlayerId(playerId).then(async data=>{
+    res.status(200).json(data)
+  }).catch (error=>{
+    res.status(200).json(null);
+  })
+});
+
 gameController.post('/', async (req, res) => {
   try {
     let game = req.body
+    game['playerAmount'] = MAX_PLAYER_IN_LOBBY
     let gameIsActive = await gameRepository.findByIsActive(game.ownerId).then(data=>{return data})
 
-    if(gameIsActive){
+    if(gameIsActive !== null){
       throw new Error('BAD_REQUEST');
     }
 
     let newGame = await gameRepository.save(game).then(data=>{return data})
     let player = await playerRepository.save(newGame.id, newGame.ownerId, true).then(data=>{return data})
-    newGame['players'] = [player]
     res.status(201).json(newGame);
   } catch (error) {
     if(error.message === 'BAD_REQUEST'){
-      res.status(400).json({message: 'A sala não foi cadastrada', status: 'alert', detail: error.cause});
+      res.status(400).json({message: 'Erro ao criar uma nova sala', status: 'danger', detail: error.cause});
     }
-    res.status(400).json({message: 'Erro ao criar a sala', status: 'danger'});
+    res.status(400).json({message: 'Erro ao criar uma nova sala', status: 'danger'});
   }
 })
 
 gameController.post('/playerConnect', async (req, res) => {
   try {
-    let game = req.body
-    let foundGame = await gameRepository.findById(game.gameId).then(data=>{return data})
+    let player = req.body
+    let foundGame = await gameRepository.findById(player.gameId).then(data=>{return data})
+    let connectedPlayer = await playerRepository.checkPlayerInLobby(foundGame.id, player.playerId)
+    if(connectedPlayer){
+      throw new Error('PLAYER_ALREADY_REGISTERED');
+    }
 
-
-    //VERIFICAR SE O PLAYER JÁ FOI CADASTRADO
-    console.log(foundGame)
-
-    if(foundGame.players.length >= 4){
+    if(foundGame.players.length >= MAX_PLAYER_IN_LOBBY){
       throw new Error('LIMIT_EXCEEDED');
     }
 
-    let player = await playerRepository.save(game.gameId, game.playerId, false).then(data=>{return data})
-    foundGame.players.push(player)
-    res.status(201).json(foundGame);
+    await playerRepository.save(player.gameId, player.playerId, false).then(data=>{return data})
+
+    await gameRepository.list().then(async (data)=>{
+      res.status(200).json(data)
+    })
   } catch (error) {
     if(error.message === 'BAD_REQUEST'){
       res.status(400).json({message: 'A sala não foi cadastrada', status: 'alert', detail: error.cause});
@@ -71,11 +83,14 @@ gameController.post('/playerConnect', async (req, res) => {
     if(error.message === 'LIMIT_EXCEEDED'){
       res.status(400).json({message: 'A sala já atingiu o número máximo de jogadores', status: 'alert'});
     }
+    if(error.message === 'PLAYER_ALREADY_REGISTERED'){
+      res.status(400).json({message: 'Este jogador já está na sala', status: 'alert'});
+    }
     res.status(400).json({message: 'Erro ao criar a sala', status: 'danger'});
   }
 })
 
-gameController.patch('/:id', async (req, res) => {
+gameController.patch('/disable/:id', async (req, res) => {
   const gameId = Number(req.params.id);
 
   await gameRepository.disable(gameId).then(u=>{
@@ -85,12 +100,39 @@ gameController.patch('/:id', async (req, res) => {
   })
 });
 
-gameController.delete('/:id', async (req, res) => {
-  const gameId = Number(req.params.id);
+gameController.patch('/playerDisconnect', async (req, res) => {
+  try {
+    let player = req.body
+    let connectedPlayer = await playerRepository.getPlayerInList(player.gameId, player.playerId).then(data=>{return data})
+    let game = await gameRepository.findById(player.gameId).then(data=>{return data})
+    
+    if(connectedPlayer === null){
+      throw new Error('PLAYER_NOT_REGISTERED');
+    }
+    
+    console.log("---------------")
+    console.log(player)
+    console.log(connectedPlayer)
+    console.log(game)
 
-  await gameRepository.delete(gameId).then(u=>{
-    res.status(200).json({message: 'Sala apagada com sucesso!'})
-  }).catch (error=>{
+    if(player.playerId === game.ownerId){
+      await playerRepository.deleteMany(player.gameId)
+      await gameRepository.disable(player.gameId)
+    } else {
+      await playerRepository.delete(connectedPlayer.id)
+    }
+    
+    res.status(200).json("FOI")
+  } catch (error) {
+    if(error.message === 'PLAYER_NOT_REGISTERED'){
+      res.status(400).json({message: 'Este jogador não está na sala', status: 'alert'});
+    }
     res.status(400).json({message: 'Sala não encontrada'});
-  })
-});
+  }
+})
+
+gameController.delete('/player/:id', async (req, res) => {
+  const playerId = Number(req.params.id);
+  await playerRepository.delete(playerId)
+  res.status(200).json("Player deletado")
+})

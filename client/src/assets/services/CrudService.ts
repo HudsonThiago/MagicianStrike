@@ -1,6 +1,6 @@
 import type { AxiosResponse } from "axios";
-import type { Entity } from "../../models/Entity";
-import { Api } from "../Api";
+import type { Entity } from "../models/Entity";
+import { Api } from "./Api";
 
 export class CrudService<T extends Entity> {
   protected readonly urlBase
@@ -12,6 +12,10 @@ export class CrudService<T extends Entity> {
 
   getURL(): string {
     return this.urlBase;
+  }
+
+  find(): Promise<AxiosResponse<T[]>> {
+    return Api.get(`${this.urlBase}`)
   }
 
   findById(id: number): Promise<AxiosResponse<T>> {

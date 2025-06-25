@@ -18,21 +18,41 @@ export class PlayerRepository {
         return await prisma.player.findMany()
     }
 
+    checkPlayerInLobby = async (gameId, playerId) => {
+        const player = await prisma.player.findFirst({
+            where: {
+                gameId: gameId,
+                playerId: playerId
+            }
+        });
+        return !!player;
+    }
+
+    getPlayerInList = async (gameId, playerId) => {
+        return  await prisma.player.findFirst({
+            where: {
+                gameId: gameId,
+                playerId: playerId
+            }
+        });
+    }
+
     delete = async (id) => {
-        return await prisma.player.delete({
+        return await prisma.player.deleteMany({
             where: {
                 id: id
             }
         })
     }
 
-    findById = async (id) => {
-        return await prisma.player.findFirst({
+    deleteMany = async (id) => {
+        return await prisma.player.deleteMany({
             where: {
-                id: id,
-            },
+                gameId: id
+            }
         });
     }
+    
 
     findByGameId = async (id) => {
         return await prisma.player.findMany({

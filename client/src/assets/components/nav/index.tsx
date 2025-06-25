@@ -4,12 +4,19 @@ import Div from "../../imgs/div.svg"
 import type { ReactNode } from 'react';
 import { Button } from '../button';
 import { useUser } from '../../context/UserContext';
+import { gameService } from '../../services/GameService/GameService';
+import type { Game } from '../../models/Game';
+import type { AxiosResponse } from 'axios';
+import Alert from '../alert/alert';
+import { useAlert } from '../../context/AlertContext';
 
 interface NavProps {
     children?:ReactNode
 }
 
 export default function Nav({children}:NavProps){
+    
+    const {visible, setVisible, message, setMessage, type, setType} = useAlert()
     const navigate = useNavigate();
     const user = useUser()
 
@@ -18,8 +25,34 @@ export default function Nav({children}:NavProps){
         navigate("/")
     }
 
+    const createLobby= async ()=>{
+        await gameService.getGameByPlayerId(user.user?.id)
+        .then((data)=>{
+            console.log(data)
+            if(data.data !== null){
+                navigate(`/dashboard/lobby/${data.data.id}`)
+            } else {
+                gameService.save({ownerId: user.user?.id})
+                .then((data:AxiosResponse<Game>)=>{
+                    navigate(`/dashboard/lobby/${data.data.id}`)
+                })
+                .catch((error)=>{
+                    setVisible(true)
+                    setMessage(error.response.data.message)
+                    setType(error.response.data.status)
+                })
+            }
+        })
+    }
+
     return (
         <>
+            <Alert
+                message={message}
+                type={type}
+                visible={visible}
+                setVisible={setVisible}
+            />
             <div className="absolute z-30 left-0 ml-20 w-50 h-[100vh] bg-secondary flex items-center flex-col">
                 <div className="absolute z-30 h-full w-46 bg-radial-[at_50%_-10%] from-white/10 to-black/40 from-10% to-100% ">
 
@@ -41,7 +74,7 @@ export default function Nav({children}:NavProps){
                         alt="divisor"
                     />
                     <div className="mt-16 w-full flex flex-col items-center">
-                        <Button variant="dashboard" onClick={()=> navigate("/dashboard/lobby")}>
+                        <Button variant="dashboard" onClick={createLobby}>
                             JOGAR
                         </Button>
                         <Button variant="dashboard" onClick={()=> navigate("/dashboard")}>

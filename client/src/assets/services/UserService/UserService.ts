@@ -1,5 +1,5 @@
 import type { UserRegisterDto } from "../../models/User"
-import { CrudService } from "./CrudService"
+import { CrudService } from "../CrudService"
 
 class UserService extends CrudService<UserRegisterDto> {
   constructor() {

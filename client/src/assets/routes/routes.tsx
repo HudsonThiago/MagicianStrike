@@ -5,6 +5,7 @@ import Dashboard from "../pages/dashboard";
 import PrivateRoute from "./privateRoute";
 import Main from "../pages/dashboard/main";
 import Lobby from "../pages/dashboard/lobby";
+import Game from "../pages/dashboard/game";
 
 export const routes = createBrowserRouter([
   { path: "/", element: <Login /> },
@@ -26,6 +27,14 @@ export const routes = createBrowserRouter([
         <Dashboard>
           <Lobby/>
         </Dashboard>
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/dashboard/lobby/game/:id",
+    element: (
+      <PrivateRoute>
+        <Game/>
       </PrivateRoute>
     ),
   },

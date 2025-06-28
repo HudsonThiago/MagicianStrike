@@ -49,7 +49,10 @@ gameController.post('/', async (req, res) => {
 
     let newGame = await gameRepository.save(game).then(data=>{return data})
     let player = await playerRepository.save(newGame.id, newGame.ownerId, true).then(data=>{return data})
-    res.status(201).json(newGame);
+    
+    await gameRepository.findById(newGame.id).then(data=>{
+      res.status(201).json(data);
+    })
   } catch (error) {
     if(error.message === 'BAD_REQUEST'){
       res.status(400).json({message: 'Erro ao criar uma nova sala', status: 'danger', detail: error.cause});
@@ -72,8 +75,8 @@ gameController.post('/playerConnect', async (req, res) => {
     }
 
     await playerRepository.save(player.gameId, player.playerId, false).then(data=>{return data})
-
-    await gameRepository.list().then(async (data)=>{
+    
+    await gameRepository.findById(player.gameId).then(data=>{
       res.status(200).json(data)
     })
   } catch (error) {
@@ -109,11 +112,6 @@ gameController.patch('/playerDisconnect', async (req, res) => {
     if(connectedPlayer === null){
       throw new Error('PLAYER_NOT_REGISTERED');
     }
-    
-    console.log("---------------")
-    console.log(player)
-    console.log(connectedPlayer)
-    console.log(game)
 
     if(player.playerId === game.ownerId){
       await playerRepository.deleteMany(player.gameId)

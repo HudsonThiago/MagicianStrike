@@ -10,6 +10,18 @@ export class GameRepository {
                 ownerId: data.ownerId,
                 playerAmount: data.playerAmount,
                 active: true,
+            },
+            include: {
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
             }
         });
     };

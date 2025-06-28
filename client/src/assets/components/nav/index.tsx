@@ -9,6 +9,8 @@ import type { Game } from '../../models/Game';
 import type { AxiosResponse } from 'axios';
 import Alert from '../alert/alert';
 import { useAlert } from '../../context/AlertContext';
+import { useSocket } from '../../context/socketContext';
+import { socketService } from '../../services/socket/socketService';
 
 interface NavProps {
     children?:ReactNode
@@ -17,23 +19,32 @@ interface NavProps {
 export default function Nav({children}:NavProps){
     
     const {visible, setVisible, message, setMessage, type, setType} = useAlert()
+    const { socket } = useSocket();
     const navigate = useNavigate();
     const user = useUser()
 
     const logOut = () => {
         user.setToken(undefined)
+        if(socket) {
+            socketService.emit(socket,"leaveRooms")
+        }
         navigate("/")
     }
 
     const createLobby= async ()=>{
         await gameService.getGameByPlayerId(user.user?.id)
         .then((data)=>{
-            console.log(data)
             if(data.data !== null){
+                if(socket) {
+                    socketService.emit(socket,"joinGameLobby",{room:`game-${data.data.ownerId}`})
+                }
                 navigate(`/dashboard/lobby/${data.data.id}`)
             } else {
                 gameService.save({ownerId: user.user?.id})
                 .then((data:AxiosResponse<Game>)=>{
+                    if(socket) {
+                        socketService.emit(socket,"joinGameLobby",{room:`game-${data.data.ownerId}`})
+                    }
                     navigate(`/dashboard/lobby/${data.data.id}`)
                 })
                 .catch((error)=>{

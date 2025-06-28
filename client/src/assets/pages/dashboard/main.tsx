@@ -12,6 +12,7 @@ import type { Game } from '../../models/Game';
 import type { Player } from '../../models/Player';
 import { useAlert } from '../../context/AlertContext';
 import Alert from '../../components/alert/alert';
+import { useMatrix } from '../../context/matrixContext';
 
 export interface chat {
     username:string
@@ -20,8 +21,9 @@ export interface chat {
 
 export default function Main(){
     const {visible, setVisible, message, setMessage, type, setType} = useAlert()
+    const {matrix, setMatrix} = useMatrix()
     const user = useUser()
-    const { socket, isConnected } = useSocket();
+    const { socket } = useSocket();
     const navigate = useNavigate();
     const [chatMessage, setChatMessage] = useState<string>('')
     const [messageList, setMessageList] = useState<Array<chat>>(new Array())
@@ -30,13 +32,9 @@ export default function Main(){
 
     useEffect(() => {
         if (!socket) return;
-
-        socketService.emit(socket,"joinMainLobby",{join:"geral"})
         socketService.getChat(socket, setMessageList)
-
-        gameService.find().then((data:AxiosResponse<Game[]>)=>{
-            setGameList(data.data)
-        })
+        socketService.getGames(socket, loadGames)
+        if(selectedGame) socketService.gameStart(socket, Number(selectedGame.ownerId), (id:number, matrix:number[][]) => saveEnviroment(id, matrix));
         
         // return () => {
         //     socket.off('message');
@@ -44,7 +42,13 @@ export default function Main(){
         
     }, [socket]);
 
+    const saveEnviroment=(id:number, matrix:number[][])=>{
+        navigate(`/dashboard/lobby/game/${id}`)
+        setMatrix(matrix)
+    }
+
     useEffect(()=>{
+        loadGames()
         const fetchData = async () => {
             try {
                 await gameService.getGameByPlayerId(user.user?.id)
@@ -59,6 +63,40 @@ export default function Main(){
         fetchData();
     }, [])
 
+    const lobbyConnect= async (gameId:number)=>{
+        
+        await gameService.getGameByPlayerId(user.user?.id)
+        .then(async (data:AxiosResponse<Game>)=>{
+            if(data.data !== null){
+                if(socket) {
+                    socketService.emit(socket,"joinGameLobby",{room:`game-${data.data.ownerId}`})
+                }
+                navigate(`/dashboard/lobby/${data.data.id}`)
+            } else {
+                await gameService.connectPlayer({gameId: gameId, playerId: user.user?.id} as Player)
+                .then((d)=>{
+                    if(socket) {
+                        socketService.emit(socket,"joinGameLobby",{room:`game-${d.data.ownerId}`})
+                    }
+                    navigate(`/dashboard/lobby/${gameId}`)
+                })
+                .catch((error)=>{
+                    setVisible(true)
+                    setMessage(error.response.data.message)
+                    setType(error.response.data.status)
+                })
+                // .finally(()=>{
+                //     if(socket) socketService.emit(socket,"joinMainLobby",{join:"geral"})
+                // })
+            }
+        })
+    }
+
+    const loadGames = ()=>{
+        gameService.find().then((data:AxiosResponse<Game[]>)=>{
+            setGameList(data.data)
+        })
+    }
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter') {
             if(socket && chatMessage.trim() !== '') {
@@ -73,26 +111,6 @@ export default function Main(){
             }
         }
     };
-
-    const lobbyConnect= async (gameId:number)=>{
-        
-        await gameService.getGameByPlayerId(user.user?.id)
-        .then(async (data)=>{
-            if(data.data !== null){
-                navigate(`/dashboard/lobby/${data.data.id}`)
-            } else {
-                await gameService.connectPlayer({gameId: gameId, playerId: user.user?.id} as Player)
-                .then((d)=>{
-                    navigate(`/dashboard/lobby/${gameId}`)
-                })
-                .catch((error)=>{
-                    setVisible(true)
-                    setMessage(error.response.data.message)
-                    setType(error.response.data.status)
-                })
-            }
-        })
-    }
 
     return (
         <>
@@ -114,14 +132,14 @@ export default function Main(){
                                         })}
                                     </div>
                                 </div>
-                                {g.ownerId !== user.user?.id && selectedGame?.id===g.id && (
+                                {(selectedGame === null || (selectedGame && selectedGame.id===g.id)) && ( //g.ownerId !== user.user?.id
                                     <div className=" h-26 w-40 mr-8 flex flex-col justify-center">
                                         <Button
                                             variant="dashboard"
                                             className="mt-0 h-12 rounded-[50px]"
                                             onClick={()=>lobbyConnect(g.id)}
                                         >
-                                            Entrar na partida
+                                            {selectedGame !== null?"Voltar para a sala":"Entrar na sala"}
                                         </Button>
                                     </div>
                                 )}

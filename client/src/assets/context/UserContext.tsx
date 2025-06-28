@@ -16,7 +16,7 @@ type UserProviderProps = {
 };
 
 const getInitialUser = () => {
-  let localUser = localStorage.getItem("user")
+  let localUser = sessionStorage.getItem("user")
   if (localUser) {
     const user: User = JSON.parse(localUser) as User;
     if(user){
@@ -27,7 +27,7 @@ const getInitialUser = () => {
 };
 
 const getInitialToken = () => {
-  return localStorage.getItem("token") || undefined;
+  return sessionStorage.getItem("token") || undefined;
 };
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
@@ -36,14 +36,14 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      localStorage.setItem("token", token);
+      sessionStorage.setItem("token", token);
     } else {
-      localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
     }
     if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
+      sessionStorage.setItem("user", JSON.stringify(user));
     } else {
-      localStorage.removeItem("user");
+      sessionStorage.removeItem("user");
     }
   }, [token, user]);
   

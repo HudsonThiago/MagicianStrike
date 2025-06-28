@@ -10,9 +10,12 @@ import { authService } from "../services/UserService/AuthService";
 import { setErrors } from "../utils/errorHandling";
 import { useUser } from "../context/UserContext";
 import { useAlert } from "../context/AlertContext";
+import { useSocket } from "../context/socketContext";
+import { socketService } from "../services/socket/socketService";
 
 export default function Login(){
     const {visible, setVisible, message, setMessage, type, setType} = useAlert()
+    const { socket } = useSocket();
     const navigate = useNavigate();
     const {setToken, setUser} = useUser()
     const [loading, setLoading] = useState<boolean>(false)
@@ -33,9 +36,10 @@ export default function Login(){
         setTimeout( async () => {
             await authService.auth(values).then((data)=>{
                 if(data){
-                    console.log(data.data)
                     setUser(data.data.user)
                     setToken(data.data.token)
+                    
+                    if(socket) socketService.emit(socket,"joinMainLobby",{room:"geral"})
                     navigate("/dashboard")
                 }
             }).catch((error)=>{

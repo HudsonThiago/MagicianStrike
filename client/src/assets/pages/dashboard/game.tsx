@@ -1,79 +1,188 @@
 import type { Game } from '../../models/Game';
 import { useMatrix } from '../../context/matrixContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type JSX, type SetStateAction } from 'react';
+import { enviromentMatrix } from '../../utils/enviromentMatrix';
+import { gameService } from '../../services/GameService/GameService';
+import type { AxiosResponse } from 'axios';
+import { useParams } from 'react-router-dom';
+import type { Player } from '../../models/Player';
+import { useUser } from '../../context/UserContext';
+import { socketService } from '../../services/socket/socketService';
+import { useSocket } from '../../context/socketContext';
+import type { Socket } from 'socket.io-client';
 
 export interface chat {
     username:string
     message:string
 }
+const pos = [
+    {x: 1, y: 1},
+    {x: 15, y: 1},
+    {x: 1, y: 15},
+    {x: 15, y: 15},
+]
+
+export const setElementInMatrix = (matrix:number[][], col: number, row: number, value: number) => {
+    const novaMatriz = matrix.map((x, i) => 
+        i === row
+        ? x.map((y, j) => (j === col ? value : y))
+        : x
+    );
+
+    return novaMatriz;
+};
 
 export default function Game(){
     const {matrix, setMatrix} = useMatrix()
+    const user = useUser();
     const [coords, setCoords] = useState({ x: 1, y: 1 });
-    const [absolutePosition, setAbsolutePosition] = useState({ top: 50, left: 50 });
-    //const [move, setMove] = useState<boolean>(true)
+    const [playerCoords, setPlayerCoords] = useState<any[]>([]);
+    const [game, setGame] = useState<Game>();
+    const { id } = useParams();
+    const [runes, setRunes] = useState<number>(1);
+    const [runesInMap, setRunesInMap] = useState<any[]>([]);
+    const { socket } = useSocket();
+    const [ power, setPower ] = useState<number>(1)
+    const [ toggle, setToggle ] = useState<boolean>(true)
     
     useEffect(()=>{
-        console.log(matrix)
-    }, [])
+        if (!socket) return;
+        if(!isNaN(Number(id))) {
+            loadGame(Number(id))
+            updateGame(socket)
+            rune(socket)
+            removeRune(socket)
+            removeDamageBlocks(socket)
+        }
+    }, [socket])
+
+    const updateGame = (socket: Socket) => {
+        socket.on("updateGame", (value) => {
+            setPlayerCoords(prev=>{
+                let a = prev.map((p)=>{
+                    if(p.id === value.id){
+                        return {id:p.id, x: value.x, y:value.y}
+                    } else {
+                        return {id:p.id, x: p.x, y:p.y}
+                    }
+                })
+                return a
+            })
+        })
+    }
+    
+    const rune = (socket: Socket) => {
+        socket.on("putRune", (value) => {
+            setMatrix(value.matrix)
+            setRunesInMap(prev => [...prev, {id: value.id, x: value.x, y: value.y}])
+        })
+    }
+    
+    const removeRune = (socket: Socket) => {
+        socket.on("removeRune", (value) => {
+            setMatrix(value.matrix)
+            //setRunesInMap(prev => prev.filter(r=>!(r.x === value.x && r.y === value.y)))
+            if(value.id === user.user?.id) {
+                setRunes(prev=>prev++)
+            }
+            setTimeout(()=>{
+                setToggle(!toggle)
+            }, 10)
+            setTimeout(()=>{
+                if(socket) socketService.emit(socket,"removeDamageBlocks",{room: value.room, matrix: value.matrix, damageBlocks: value.damageBlocks})
+            }, 500)
+        })
+    }
+    
+    const removeDamageBlocks = (socket: Socket) => {
+        socket.on("removeDamageBlocks", (value) => {
+            setMatrix(value.matrix)
+        })
+    }
+
+    const loadGame = (id:number)=>{
+        gameService.findById(id)
+        .then((data:AxiosResponse<Game>)=>{
+            if(socket) socketService.emit(socket,"joinGameLobby",{room:`game-${data.data.ownerId}`})
+            if(data.data.matrix) setMatrix(JSON.parse(data.data.matrix) as number[][])
+            let game:Game = data.data
+            const pCoords:any[] = []
+            game.players?.forEach((p:Player, i:number)=>{
+                if(p.playerId === user.user?.id){
+                    setCoords(pos[i])
+                } else {
+                    pCoords.push({id: p.playerId, x: pos[i].x, y: pos[i].y})
+                }
+            })
+            setPlayerCoords(pCoords)
+            setGame(game)
+
+        })
+    }
 
     let move = true
-    let row = 1
-    let col = 1
 
     useEffect(() => {
+        if(matrix[coords.y][coords.x]===11) {
+            console.log("MORREU")
+        }
         const handleKeyDown = (event: KeyboardEvent) => {
-            if(move===true){
+
+            if(move===true && matrix){
                 move = false
-
-                setAbsolutePosition((prev) => {
-                    let top = prev.top;
-                    let left = prev.left;
-
-                    row = Math.floor(left/50)
-                    col = Math.floor(top/50)
-
-                    console.log(matrix[row][col])
-
-                    if (event.key === 'w' || event.key === 'W') {
-                        if(!(matrix[row][col-1] !== 0 && matrix[row][col-1] !== 9)){
-                            top -= 50;
-                        }
-                    }
+                setCoords((prev) => {
+                    let x = prev.x;
+                    let y = prev.y;
                     if (event.key === 'a' || event.key === 'A') {
-                        if(!(matrix[row-1][col] !== 0 && matrix[row-1][col] !== 9)){
-                            left -= 50;
+
+                        if(matrix[y][x-1] === 0 || matrix[y][x-1] === 11){
+                            x -= 1;
                         }
                     }
-                    if (event.key === 's' || event.key === 'S') {
-                        if(!(matrix[row][col+1] !== 0 && matrix[row][col+1] !== 9)){
-                            top += 50;
+                    if (event.key === 'w' || event.key === 'W') {
+                        if(matrix[y-1][x] === 0 || matrix[y-1][x] === 11){
+                            y -= 1;
                         }
                     }
                     if (event.key === 'd' || event.key === 'D') {
-                        if(!(matrix[row+1][col] !== 0 && matrix[row+1][col] !== 9)){
-                            left += 50;
+                        if(matrix[y][x+1] === 0 || matrix[y][x+1] === 11){
+                            x += 1;
                         }
                     }
-
-                    setCoords({x:row, y:col})
+                    if (event.key === 's' || event.key === 'S') {
+                        if(matrix[y+1][x] === 0 || matrix[y+1][x] === 11){
+                            y += 1;
+                        }
+                    }
 
                     setTimeout(()=>{
                         move = true
                     }, 200)
+                    if(socket) socketService.emit(socket,"updateGame", {room:`game-${game?.ownerId}`, id: user.user?.id, x: x, y: y})
                 
-                    //console.log({ top, left });
-                    return { top, left };
+                    return { x, y };
                 });
             }
+
+
+            if (event.key === 'e' || event.key === 'E') {
+                if(matrix[coords.y][coords.x] === 0 || matrix[coords.y][coords.x] === 11){
+                    if(runes > 0){
+                        addRune(coords.x, coords.y)
+                    }
+                }
+            }
+
+        };
+    
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
         };
         
-            window.addEventListener("keydown", handleKeyDown);
+    }, [coords, runes, toggle]);
 
-            return () => {
-                window.removeEventListener("keydown", handleKeyDown);
-            };
-    }, []);
 
     const getField=(x:number, y:number)=>{
         if(matrix[x][y] === 1) {
@@ -94,6 +203,12 @@ export default function Game(){
                 className="bg-[url('/public/brick.svg')] bg-cover w-[50px] h-[50px]"
             >
             </div>
+        } if(matrix[x][y] === 11) {
+            return <div
+                key={`spot-${x}-${y}`}
+                className="bg-yellow-200 w-[50px] h-[50px]"
+            >
+            </div>
         } else {
             return <div
                 key={`spot-${x}-${y}`}
@@ -103,22 +218,57 @@ export default function Game(){
         }
     }
 
+    const addRune = (row:number, col:number) => {
+        const newRune = {id: user.user?.id, x: coords.x, y: coords.y};
+        setRunesInMap((prev) => {
+            if(socket) socketService.emit(socket,"putRune", {room:`game-${game?.ownerId}`, matrix: matrix, id: user.user?.id, x: coords.x, y: coords.y})
+
+            return [...prev, newRune]
+        });
+    };
+
     return (
         <div className="w-full h-full flex justify-center items-center">
             <div className='relative w-[850px] h-[850px]'>
-                <div className='absolute z-10 bg-red-200 w-[50px] h-[50px] transition-all duration-200 ease-linear' 
-                    style={{
-                    position: "absolute",
-                    top: `${absolutePosition.top}px`,
-                    left: `${absolutePosition.left}px`,
-                }}>
-
+                {coords && (
+                    <div className='absolute z-20 bg-red-400 w-[50px] h-[50px] transition-all duration-200 ease-linear' 
+                        style={{
+                        position: "absolute",
+                        top: `${coords.y*50}px`,
+                        left: `${coords.x*50}px`,
+                        }}>
+                    </div>
+                )}
+                {playerCoords?.map((p)=>{
+                    return (
+                        <div className='absolute z-20 bg-blue-200 w-[50px] h-[50px] transition-all duration-200 ease-linear'
+                            style={{
+                            position: "absolute",
+                            top: `${p.y*50}px`,
+                            left: `${p.x*50}px`,
+                            }}>
+                        </div>
+                    )
+                })}
+        
+                <div className='absolute z-10'>
+                    {runesInMap.map((r)=> {
+                        if(game)
+                        return (
+                            <Rune
+                                ownerId={game?.ownerId}
+                                socket={socket}
+                                setRunes={setRunesInMap}
+                                runes={runesInMap}
+                                rune={r}
+                                power={power}
+                            />
+                        )
+                    })}
                 </div>
-                <div className='absolute z-10 bg-blue-200 w-[50px] h-[50px] top-[50px] left-[750px]'>
 
-                </div>
                 <div className="absolute z-0 bg-lime-500 grayscale-30 mx-auto grid grid-rows-17 grid-cols-1">
-                    {matrix.map((row, x) => (
+                    {matrix && matrix.map((row, x) => (
                         <div key={`row-${x}`} className="flex">
                             {row.map((col, y) => {
                                 return getField(x, y)
@@ -126,6 +276,46 @@ export default function Game(){
                         </div>
                     ))}
                 </div>
+            </div>
+        </div>
+    )
+}
+
+interface RuneProps {
+    runes:any[]
+    ownerId:number
+    setRunes:Dispatch<SetStateAction<any[]>>
+    rune:any
+    socket:Socket|null
+    power:number
+}
+
+function Rune({ownerId, socket, setRunes, runes, rune, power}:RuneProps){
+
+    const {matrix, setMatrix} = useMatrix()
+    const [id,setId] = useState<string>(String(new Date()))
+
+    useEffect(()=>{
+        setTimeout(()=>{
+            setRunes((prev)=>prev.filter((r)=>!(r.x === rune.x && r.y === rune.y)))
+            if(socket) socketService.emit(socket,"removeRune", {room:`game-${ownerId}`, matrix: matrix, id: rune.id, x: rune.x, y: rune.y, power: power})
+        }, 3000)
+        setTimeout(()=>{
+            const explosion = document.getElementById(id)
+            explosion?.classList.add('animate-ripple1')
+        }, 2500)
+    }, [])
+
+    return(
+        <div
+            className="bg-[url('/public/rune.svg')] bg-cover absolute w-[50px] h-[50px] animate-rune flex justify-center items-center"
+            style={{ top: `${rune.y*50}px`, left: `${rune.x*50}px` }}
+        >
+            <div 
+                id={id}
+                className='absolute z-30 bg-violet-300'
+                style={{ top: `${rune.y*50-(50*power)}px`, left: `${rune.x*50-(50*power)}px`, width: `${50*(power*2+1)}`, height: `${50*(power*2+1)}`, borderRadius: "50%" }}
+            >
             </div>
         </div>
     )

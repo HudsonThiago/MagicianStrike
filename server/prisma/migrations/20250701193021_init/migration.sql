@@ -12,6 +12,7 @@ CREATE TABLE "Game" (
     "ownerId" INTEGER NOT NULL,
     "playerAmount" INTEGER NOT NULL,
     "active" BOOLEAN NOT NULL,
+    "matrix" TEXT NOT NULL,
     CONSTRAINT "Game_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 

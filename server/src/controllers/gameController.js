@@ -103,6 +103,18 @@ gameController.patch('/disable/:id', async (req, res) => {
   })
 });
 
+gameController.patch('/updateMatrix/:id', async (req, res) => {
+  const gameId = Number(req.params.id);
+  const matrix = req.body
+  let game = gameRepository.findById(gameId).then(g=> {return g})
+
+  await gameRepository.updateMatrix(gameId, matrix.matrix).then(g=>{
+    res.status(200).json({message: 'Mapa atualizado com sucesso!'})
+  }).catch (error=>{
+    res.status(400).json({message: 'Mapa não encontrada'});
+  })
+});
+
 gameController.patch('/playerDisconnect', async (req, res) => {
   try {
     let player = req.body
@@ -120,7 +132,7 @@ gameController.patch('/playerDisconnect', async (req, res) => {
       await playerRepository.delete(connectedPlayer.id)
     }
     
-    res.status(200).json("FOI")
+    res.status(200).json("player desconectado")
   } catch (error) {
     if(error.message === 'PLAYER_NOT_REGISTERED'){
       res.status(400).json({message: 'Este jogador não está na sala', status: 'alert'});

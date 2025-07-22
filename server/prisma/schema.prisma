@@ -21,6 +21,7 @@ model Game {
     ownerId Int
     playerAmount Int
     active Boolean
+    matrix String
     players Player[]
     owner User @relation(fields: [ownerId], references: [id])
 }

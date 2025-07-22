@@ -7,6 +7,7 @@ export interface Game extends Entity {
     ownerId: number
     owner?: User
     active?: boolean
+    matrix?: string
     playerAmount?: number
     players?: Player[]
 }

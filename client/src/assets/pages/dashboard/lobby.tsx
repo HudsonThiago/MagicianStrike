@@ -31,7 +31,16 @@ export default function Main(){
         }
     }, [socket]);
 
+    useEffect(()=>{
+        gameService.findById(Number(id))
+        .then((data:AxiosResponse<Game>)=>{
+            setGame(data.data)
+            if(socket) socketService.emit(socket,"joinGameLobby",{room:`game-${data.data.ownerId}`})
+        })
+    }, [])
+
     const saveEnviroment=(id:number, matrix:number[][])=>{
+        gameService.updateMatrix(Number(id), {matrix: JSON.stringify(matrix)})
         navigate(`/dashboard/lobby/game/${id}`)
         setMatrix(matrix)
     }

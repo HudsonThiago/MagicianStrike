@@ -9,6 +9,7 @@ export class GameRepository {
             data: {
                 ownerId: data.ownerId,
                 playerAmount: data.playerAmount,
+                matrix: "",
                 active: true,
             },
             include: {
@@ -34,6 +35,29 @@ export class GameRepository {
             data: {
                 ownerId: data.ownerId,
                 active: data.active
+            },
+            include: {
+                players: {
+                    include: {
+                        user: {
+                            select: {
+                                username: true
+                            }
+                        }
+                    }
+                },
+                owner: true
+            }
+        });
+    }
+
+    updateMatrix = async (id, matrix) => {
+        return await prisma.game.update({
+            where: {
+                id: id
+            },
+            data: {
+                matrix: matrix
             },
             include: {
                 players: {

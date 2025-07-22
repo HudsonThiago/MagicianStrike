@@ -20,6 +20,10 @@ class GameService extends CrudService<Game> {
     async disconnectPlayer(data:Player): Promise<AxiosResponse<Game>> {
         return Api.patch(`${this.urlBase}/playerDisconnect`, data)
     }
+
+    async updateMatrix(id:number, data:{matrix:string}): Promise<AxiosResponse<Game>> {
+        return Api.patch(`${this.urlBase}/updateMatrix/${id}`, data)
+    }
 }
 
 export const gameService = new GameService()

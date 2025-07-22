@@ -1,4 +1,4 @@
-# Batalha Naval
+# Magician Strike
 
 Magician strike é um jogo no estilo "bomber man" feito em express e socket.io
 

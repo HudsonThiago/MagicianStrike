@@ -2,6 +2,8 @@
 
 Magician strike é um jogo no estilo "bomber man" feito em express e socket.io
 
+Link do GDD: [Clique aqui](https://docs.google.com/document/d/1tfg2yBt0j9o2y56sRMp_M9lkBE9UOcg0GjTz-oy-2wQ/edit?usp=sharing)
+
 ## Requisitos
 
 * Node v20

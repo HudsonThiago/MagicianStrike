@@ -116,6 +116,10 @@ io.on('connection', (socket) => {
       io.to(value.room).emit("putRune", value)
     }
   })
+  
+  socket.on('killPlayer', (value) => {
+    io.to(value.room).emit("killPlayer", value)
+  })
 
   socket.on('removeRune', (value) => {
     
